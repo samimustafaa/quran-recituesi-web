@@ -1,0 +1,5 @@
+scripts/raw-quran.json
+*.tar.gz
+.import-cache/
+__pycache__/
+.font-cache/

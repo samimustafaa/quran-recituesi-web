@@ -1,0 +1,10 @@
+{
+  "source": "https://api.quran.com/api/v4",
+  "imported_at": "2026-10-10T01:06:37Z",
+  "pages": 604,
+  "verses": 6236,
+  "chapters": 114,
+  "text_integrity": "Every verse equals Quran.com bulk Uthmani text, byte for byte",
+  "fonts": "Quran.com QCF V2, all 604 page fonts",
+  "sha256": "481d3fb31cc13b0c12a972c6011d2b80f0b94407e6c459b0512390710e058bec"
+}
