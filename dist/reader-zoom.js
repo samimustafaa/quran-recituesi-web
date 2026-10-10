@@ -16,7 +16,8 @@ export function createReaderZoom({viewport, content, book, minus, plus, reset, h
     hint.textContent = enlarged() ? 'Tërhiq faqen për ta lëvizur · Prek përqindjen për ta rikthyer' : 'Zmadho për lexim më të qartë';
   }
   function paint() {
-    content.style.transform = `translate3d(${view.x.toFixed(2)}px,${view.y.toFixed(2)}px,0) scale(${view.scale.toFixed(4)})`;
+    // Keep resting text on a 2D transform; only active motion requests a compositor layer.
+    content.style.transform = `translate(${view.x.toFixed(2)}px,${view.y.toFixed(2)}px) scale(${view.scale.toFixed(4)})`;
     viewport.classList.toggle('zoomed', enlarged());
   }
   function tick(time) {

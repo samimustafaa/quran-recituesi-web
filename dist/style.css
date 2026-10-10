@@ -123,6 +123,11 @@ body.night .about-dialog a:hover,body.night .landing-bottom button:hover{color:#
 .zoom-viewport.zoomed .quran-word,.zoom-viewport.zoomed{cursor:grab;user-select:none}
 .zoom-viewport.zoom-dragging .quran-word,.zoom-viewport.zoom-dragging{cursor:grabbing}
 .zoom-viewport.zoom-moving .zoom-content,.zoom-viewport.zoom-dragging .zoom-content{will-change:transform}
+/* Flat reading pages preserve the original vector calligraphy at every zoom level. */
+.mushaf-book{transform:none}
+.mushaf-page{--paper-ink:#17251f}
+body.night .mushaf-page{--paper-ink:#fff6e2}
+.mushaf-page [lang=ar],.mushaf-page .quran-lines{font-synthesis:none;text-rendering:geometricPrecision;-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto}
 @media(max-width:720px){
  .zoom-controls{top:max(8px,env(safe-area-inset-top));flex-wrap:wrap;max-width:480px;padding:5px 9px;gap:4px}
  .zoom-button,.zoom-percentage{height:44px;min-width:44px}

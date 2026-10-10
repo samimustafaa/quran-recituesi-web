@@ -64,7 +64,7 @@ window.emit('pointerup',{pointerId: 5,clientX: 210,clientY: 280});
 assert.notEqual(content.style.transform,beforePan);
 assert.deepEqual(swipes,[1],'Dragging an enlarged page must pan it without turning pages');
 zoom.pageChanged(); assert.equal(reset.textContent,'180%');
-assert.ok(content.style.transform.includes('translate3d(-110.00px,184.00px'),'New pages should open at the top-right reading edge');
+assert.ok(content.style.transform.includes('translate(-110.00px,184.00px)'),'New pages should open at the top-right reading edge');
 viewport.clientWidth = 380; viewport.clientHeight = 540; book.offsetWidth = 360; book.offsetHeight = 540;
 observers.forEach(fn => fn()); assert.ok(!content.style.transform.includes('NaN'));
 motion.matches = true; reset.click(); assert.equal(frames.size,0); assert.equal(reset.textContent,'100%');
