@@ -108,3 +108,25 @@ body.night .about-dialog a:hover,body.night .landing-bottom button:hover{color:#
 
 .about-dialog a{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 .about-dialog a:hover{text-decoration-thickness:2px}
+
+/* Zoom changes only the book transform; Quran text stays in its original layout. */
+.zoom-controls{position:sticky;top:8px;z-index:8;display:flex;align-items:center;gap:6px;max-width:1030px;margin:10px auto 0;padding:6px 10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px #123d3208}
+.zoom-label{font-size:11px;margin-right:8px;color:var(--ink)}
+.zoom-button,.zoom-percentage{height:38px;min-width:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;color:var(--ink)}
+.zoom-button{font-size:24px}.zoom-percentage{font-size:12px;font-variant-numeric:tabular-nums;min-width:62px}
+.zoom-button:hover,.zoom-percentage:hover{background:#a58b501c}
+.zoom-hint{font-size:10px;color:var(--muted);margin-left:10px;line-height:1.5}
+.zoom-viewport{width:100%;min-width:0;position:relative;touch-action:pan-y}
+.zoom-content{width:100%;display:flex;justify-content:center;transform-origin:50% 50%}
+.zoom-viewport.zoomed{overflow:hidden;isolation:isolate;border-radius:8px;touch-action:none;background:var(--bg)}
+.zoom-viewport.zoomed .mushaf-book{touch-action:none}
+.zoom-viewport.zoomed .quran-word,.zoom-viewport.zoomed{cursor:grab;user-select:none}
+.zoom-viewport.zoom-dragging .quran-word,.zoom-viewport.zoom-dragging{cursor:grabbing}
+.zoom-viewport.zoom-moving .zoom-content,.zoom-viewport.zoom-dragging .zoom-content{will-change:transform}
+@media(max-width:720px){
+ .zoom-controls{top:max(8px,env(safe-area-inset-top));flex-wrap:wrap;max-width:480px;padding:5px 9px;gap:4px}
+ .zoom-button,.zoom-percentage{height:44px;min-width:44px}
+ .zoom-percentage{min-width:64px}
+ .zoom-hint{width:100%;margin:0 0 4px;text-align:center;font-size:10px}
+ .zoom-label{margin-right:auto}
+}

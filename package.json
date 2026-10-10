@@ -5,6 +5,6 @@
   "type": "module",
   "description": "Mus'haf — an Albanian Quran reader by Sami Mustafa with authentic Quran.com Arabic and animated page turns.",
   "scripts": {
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs && node scripts/check-zoom.mjs"
   }
 }
