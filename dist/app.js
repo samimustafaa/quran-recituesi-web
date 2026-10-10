@@ -1,5 +1,6 @@
 import {TOTAL_PAGES, normalizePage, spreadFor, adjacentPage, groupPageLines, pageTurnJourney, journeyTurnDuration} from './reader-core.js';
 import {createOpeningPage} from './opening-page.js';
+import {surahMeaning, normalizeSearch} from './surah-names.js';
 
 const $ = selector => document.querySelector(selector);
 const media = matchMedia('(max-width: 720px)');
@@ -17,14 +18,14 @@ const FONT_REVISION = '74eb4e20f4e78cc11c055a3e130136e8dbb7743e';
 const measure = document.createElement('canvas').getContext('2d');
 
 function toast(message) { clearTimeout(toastTimer); $('#toast').textContent = message; $('#toast').classList.add('visible'); toastTimer = setTimeout(() => $('#toast').classList.remove('visible'), 2500); }
-function fetchJson(url) { return fetch(url).then(r => { if (!r.ok) throw new Error('Could not load reading data'); return r.json(); }); }
+function fetchJson(url) { return fetch(url).then(r => { if (!r.ok) throw new Error('Nuk u ngarkuan të dhënat e leximit'); return r.json(); }); }
 function loadMetadata() {
   if (!metaPromise) metaPromise = Promise.all([fetchJson('/data/chapters.json'), fetchJson('/data/index.json'), getPage(1)]).then(([chapters, index, firstPage]) => { state.chapters = chapters; state.index = index; state.bismillah = firstPage.verses.find(v => v.key === '1:1').text; }).catch(error => { metaPromise = null; throw error; });
   return metaPromise;
 }
 function getPage(page) {
   if (!pageCache.has(page)) {
-    const promise = fetchJson(`/data/${page}.json`).then(data => { if (data.page !== page || !data.verses?.length) throw new Error('Invalid Quran page'); return data; }).catch(error => { pageCache.delete(page); throw error; });
+    const promise = fetchJson(`/data/${page}.json`).then(data => { if (data.page !== page || !data.verses?.length) throw new Error('Faqe e pavlefshme e Kuranit'); return data; }).catch(error => { pageCache.delete(page); throw error; });
     pageCache.set(page, promise);
   }
   return pageCache.get(page);
@@ -51,21 +52,21 @@ async function preparePages(page, mobile = media.matches) {
 async function preparePassingPages(page, mobile = media.matches) {
   return Promise.all(spreadFor(page, mobile).map(async n => n === null ? null : {data: await getPage(n), font: 'Uthmani', unicode: true}));
 }
-function chapterName(id) { return state.chapters.find(c => c.id === id)?.name_simple || 'The Quran'; }
+function chapterName(id) { return surahMeaning(id); }
 function pageElement(prepared, position) {
   const {data, font} = prepared;
   const article = document.createElement('article');
   article.className = `mushaf-page ${position}-page${data.page <= 2 ? ' opening-page' : ''}`;
-  article.setAttribute('lang', 'ar');
-  article.setAttribute('aria-label', `Quran page ${data.page}`);
+  article.setAttribute('lang', 'sq');
+  article.setAttribute('aria-label', `Faqja ${data.page} e Kuranit`);
   article.style.setProperty('--page-font', `"${font}"`);
   article.dataset.page = data.page;
   const chaptersOnPage = [...new Set(data.verses.map(v => Number(v.key.split(':')[0])))];
-  const top = document.createElement('div'); top.className = 'page-topline'; top.dir = 'rtl';
+  const top = document.createElement('div'); top.className = 'page-topline'; top.dir = 'rtl'; top.lang = 'ar';
   const surah = document.createElement('span'); surah.textContent = 'سورة ' + (state.chapters.find(c => c.id === chaptersOnPage[0])?.name_arabic || '');
   const juz = document.createElement('span'); juz.textContent = 'الجزء ' + arabicNumber(data.juz);
   top.append(surah, juz);
-  const frame = document.createElement('div'); frame.className = 'page-frame';
+  const frame = document.createElement('div'); frame.className = 'page-frame'; frame.lang = 'ar';
   const content = document.createElement('div'); content.className = 'quran-lines';
   const lines = groupPageLines(data, state.chapters);
   for (const line of lines) {
@@ -82,7 +83,7 @@ function pageElement(prepared, position) {
     content.append(row);
   }
   frame.append(content);
-  const bottom = document.createElement('div'); bottom.className = 'page-number'; bottom.textContent = arabicNumber(data.page);
+  const bottom = document.createElement('div'); bottom.className = 'page-number'; bottom.lang = 'ar'; bottom.textContent = arabicNumber(data.page);
   article.append(top, frame, bottom);
   return article;
 }
@@ -115,9 +116,10 @@ function installPages(prepared) {
 function updateUI({persist = true, prefetch = true} = {}) {
   const [left, right] = spreadFor(state.page, media.matches);
   const info = state.index.find(p => p.page === state.page) || state.index.find(p => p.page === right);
-  $('#location-surah').textContent = info ? info.chapters.map(chapterName).join(' · ') : 'The Quran';
-  $('#location-juz').textContent = `Juz ${info?.juz || 1} · Madani Mushaf`;
+  $('#location-surah').textContent = info ? info.chapters.map(chapterName).join(' · ') : 'Kurani';
+  $('#location-juz').textContent = `Xhuzi ${info?.juz || 1} · Mushafi i Medinës`;
   $('#page-input').value = state.page;
+  $('#page-input').setCustomValidity('');
   $('#page-total').textContent = left === null ? '/ 604' : `· ${right}–${left} / 604`;
   $('#source-page').href = `https://quran.com/page/${state.page}`;
   $('#progress-fill').style.width = `${state.page / TOTAL_PAGES * 100}%`;
@@ -125,7 +127,7 @@ function updateUI({persist = true, prefetch = true} = {}) {
   $('#next-page').disabled = (left || right) >= TOTAL_PAGES || state.busy;
   const saved = state.bookmarks.includes(state.page);
   $('#bookmark-button').setAttribute('aria-pressed', String(saved));
-  $('#bookmark-button').setAttribute('aria-label', saved ? 'Remove current page bookmark' : 'Bookmark current page');
+  $('#bookmark-button').setAttribute('aria-label', saved ? 'Hiqe faqen aktuale nga të ruajturat' : 'Ruaj faqen aktuale');
   if (persist) {
     storage.set('lastPage', state.page);
     const url = new URL(location.href); url.hash = `page=${state.page}`;
@@ -137,9 +139,9 @@ function updateUI({persist = true, prefetch = true} = {}) {
 function showPageError() {
   const page = $('#right-page'); page.replaceChildren();
   const error = document.createElement('div'); error.className = 'page-error';
-  const message = document.createElement('p'); message.textContent = 'This page could not be loaded. Please check your connection and try again.';
-  const retry = document.createElement('button'); retry.textContent = 'Try again'; retry.onclick = () => goToPage(state.page);
-  const source = document.createElement('a'); source.href = `https://quran.com/page/${state.page}`; source.target = '_blank'; source.rel = 'noopener noreferrer'; source.textContent = 'Read this page on Quran.com ↗';
+  const message = document.createElement('p'); message.textContent = 'Kjo faqe nuk u ngarkua. Kontrollo lidhjen me internetin dhe provo përsëri.';
+  const retry = document.createElement('button'); retry.textContent = 'Provo përsëri'; retry.onclick = () => goToPage(state.page);
+  const source = document.createElement('a'); source.href = `https://quran.com/page/${state.page}`; source.target = '_blank'; source.rel = 'noopener noreferrer'; source.textContent = 'Lexoje këtë faqe në Quran.com ↗';
   error.append(message, retry, source); page.append(error); $('#left-page').hidden = true;
 }
 async function goToPage(page, animate = false, direction = 1) {
@@ -150,7 +152,7 @@ async function goToPage(page, animate = false, direction = 1) {
   const mobile = media.matches;
   const journey = animate === 'jump' && !reducedMotion.matches && $('#right-page').querySelector('.quran-lines') ? pageTurnJourney(state.page, target, mobile) : [];
   const travelLabel = $('#travel-label');
-  if (journey.length) { travelLabel.textContent = `Turning to page ${target}…`; travelLabel.hidden = false; $('#mushaf-book').classList.add('travelling'); }
+  if (journey.length) { travelLabel.textContent = `Po shfletohet drejt faqes ${target}…`; travelLabel.hidden = false; $('#mushaf-book').classList.add('travelling'); }
   try {
     const [prepared, passing] = await Promise.all([
       preparePages(target, mobile),
@@ -168,7 +170,7 @@ async function goToPage(page, animate = false, direction = 1) {
       }
     } else if (animate === true && mobile === media.matches && !reducedMotion.matches && $('#right-page').querySelector('.quran-lines')) await turnLeaf(prepared, direction);
     installPages(mobile === media.matches ? prepared : await preparePages(target)); state.page = target;
-  } catch (error) { state.page = target; showPageError(); toast('Reading data is unavailable. You can retry or open Quran.com.'); }
+  } catch (error) { state.page = target; showPageError(); toast('Të dhënat e leximit nuk janë të disponueshme. Provo përsëri ose hap Quran.com.'); }
   finally { if (token === renderToken) {
     state.busy = false; $('#mushaf-book').setAttribute('aria-busy', 'false'); $('#mushaf-book').classList.remove('travelling'); travelLabel.hidden = true; updateUI();
     if (pendingJump !== undefined) { const next = pendingJump; pendingJump = undefined; queueMicrotask(() => goToPage(next, 'jump')); }
@@ -203,7 +205,7 @@ async function openBook(page = 1, animate = true) {
   preparePages(target).catch(() => {});
   state.opening = true; state.open = true;
   $('#open-button').disabled = true; $('#book-stage').setAttribute('aria-busy','true');
-  const caption = $('#book-caption-label'); caption.textContent = 'OPENING THE QURAN';
+  const caption = $('#book-caption-label'); caption.textContent = 'PO HAPET KURANI';
   try {
     const [prepared] = await Promise.all([initialPages,animate ? bookScenePromise : null]);
     if (animate && !reducedMotion.matches) {
@@ -223,8 +225,8 @@ async function openBook(page = 1, animate = true) {
       try { await fade.finished; } catch { /* Continue if the animation is interrupted. */ }
       fade.cancel();
     }
-  } catch { toast('Opening the reader…'); }
-  finally { state.opening = false; $('#open-button').disabled = false; $('#book-stage').setAttribute('aria-busy','false');caption.textContent = 'TOUCH TO OPEN'; }
+  } catch { toast('Po hapet hapësira e leximit…'); }
+  finally { state.opening = false; $('#open-button').disabled = false; $('#book-stage').setAttribute('aria-busy','false');caption.textContent = 'PREK PËR TA HAPUR'; }
   $('#landing').hidden = true; $('#reader').hidden = false; document.body.classList.add('reader-visible');
   if (!$('#right-page').querySelector('.quran-lines') && !$('#right-page').querySelector('.page-error')) await goToPage(startPage);
   fitAll();
@@ -240,31 +242,31 @@ function closeBook() {
   history.replaceState(null, '', location.pathname + location.search);
   showResume(); $('#open-button').focus({preventScroll:true}); window.scrollTo({top:0, behavior:'instant'});
 }
-function showResume() { const p = normalizePage(storage.get('lastPage',1)); $('#resume-button').hidden = p <= 1; $('#resume-page').textContent = `· Page ${p}`; }
+function showResume() { const p = normalizePage(storage.get('lastPage',1)); $('#resume-button').hidden = p <= 1; $('#resume-page').textContent = `· Faqja ${p}`; }
 async function showNavigation(tab = 'surahs') {
   state.tab = tab; $('#surah-search').value = ''; $('#navigation-dialog').showModal();
-  $('#navigation-list').textContent = 'Loading the Quran index…';
-  try { await loadMetadata(); renderNavigation(); } catch { const button = document.createElement('button'); button.className = 'empty-list'; button.textContent = 'Could not load the index. Tap to retry.'; button.onclick = async () => { await loadMetadata(); renderNavigation(); }; $('#navigation-list').replaceChildren(button); }
+  $('#navigation-list').textContent = 'Po ngarkohet përmbajtja e Kuranit…';
+  try { await loadMetadata(); renderNavigation(); } catch { const button = document.createElement('button'); button.className = 'empty-list'; button.textContent = 'Përmbajtja nuk u ngarkua. Prek për të provuar përsëri.'; button.onclick = async () => { await loadMetadata(); renderNavigation(); }; $('#navigation-list').replaceChildren(button); }
 }
 function renderNavigation() {
   document.querySelectorAll('[data-tab]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.tab === state.tab)));
   const search = $('#surah-search'); search.hidden = state.tab !== 'surahs'; search.closest('label').hidden = state.tab !== 'surahs';
   const list = $('#navigation-list'); list.replaceChildren();
-  const query = search.value.trim().toLowerCase();
+  const query = normalizeSearch(search.value.trim());
   if (state.tab === 'surahs') {
-    const chapters = state.chapters.filter(c => [c.name_simple, c.name_arabic, c.translated_name.name, String(c.id)].some(t => t.toLowerCase().includes(query)));
-    for (const chapter of chapters) list.append(navigationRow(chapter.id, chapter.name_simple, `${chapter.translated_name.name} · ${chapter.verses_count} Ayahs`, chapter.name_arabic, chapter.pages[0]));
-    if (!chapters.length) emptyNavigation('No Surahs match your search.');
+    const chapters = state.chapters.filter(c => [c.name_simple, c.name_arabic, surahMeaning(c.id), String(c.id)].some(t => normalizeSearch(t).includes(query)));
+    for (const chapter of chapters) list.append(navigationRow(chapter.id, surahMeaning(chapter.id), `${chapter.name_simple} · ${chapter.verses_count} ajete`, chapter.name_arabic, chapter.pages[0]));
+    if (!chapters.length) emptyNavigation('Nuk u gjet asnjë sure për këtë kërkim.');
   } else if (state.tab === 'juz') {
-    for (let juz = 1; juz <= 30; juz++) { const info = state.index.find(p => p.juz === juz); if (info) list.append(navigationRow(juz, `Juz ${juz}`, `${chapterName(info.chapters[0])} · begins at ${info.first}`, 'الجزء ' + arabicNumber(juz), info.page)); }
+    for (let juz = 1; juz <= 30; juz++) { const info = state.index.find(p => p.juz === juz); if (info) list.append(navigationRow(juz, `Xhuzi ${juz}`, `${chapterName(info.chapters[0])} · fillon te ajeti ${info.first}`, 'الجزء ' + arabicNumber(juz), info.page)); }
   } else {
     for (const page of [...state.bookmarks].sort((a,b) => a-b)) {
       const info = state.index[page-1]; const wrapper = document.createElement('div'); wrapper.className = 'bookmark-row';
-      const row = navigationRow(page, info.chapters.map(chapterName).join(' · '), `Page ${page} · Juz ${info.juz}`, '', page);
-      const remove = document.createElement('button'); remove.className = 'remove-bookmark'; remove.textContent = '×'; remove.setAttribute('aria-label', `Remove bookmark for page ${page}`); remove.onclick = () => { state.bookmarks = state.bookmarks.filter(n => n !== page); storage.set('bookmarks', state.bookmarks); renderNavigation(); if (state.open) updateUI(); };
+      const row = navigationRow(page, info.chapters.map(chapterName).join(' · '), `Faqja ${page} · Xhuzi ${info.juz}`, '', page);
+      const remove = document.createElement('button'); remove.className = 'remove-bookmark'; remove.textContent = '×'; remove.setAttribute('aria-label', `Hiqe faqen ${page} nga të ruajturat`); remove.onclick = () => { state.bookmarks = state.bookmarks.filter(n => n !== page); storage.set('bookmarks', state.bookmarks); renderNavigation(); if (state.open) updateUI(); };
       wrapper.append(row, remove); list.append(wrapper);
     }
-    if (!state.bookmarks.length) emptyNavigation('Your saved pages will appear here.\nTap the bookmark while reading to save your place.');
+    if (!state.bookmarks.length) emptyNavigation('Faqet e ruajtura do të shfaqen këtu.\nGjatë leximit, prek shenjën e ruajtjes për të ruajtur faqen.');
   }
 }
 function emptyNavigation(message) { const div = document.createElement('div'); div.className = 'empty-list'; div.textContent = message; $('#navigation-list').append(div); }
@@ -273,7 +275,7 @@ function navigationRow(number, title, subtitle, arabic, page) {
   const n = document.createElement('span'); n.className = 'row-number'; n.textContent = number;
   const label = document.createElement('span'); label.className = 'row-label'; const strong = document.createElement('strong'); strong.textContent = title; const small = document.createElement('small'); small.textContent = subtitle; label.append(strong, small);
   const ar = document.createElement('span'); ar.className = 'row-arabic'; ar.lang = 'ar'; ar.textContent = arabic;
-  const p = document.createElement('span'); p.className = 'row-page'; p.textContent = 'p. ' + page;
+  const p = document.createElement('span'); p.className = 'row-page'; p.textContent = 'f. ' + page;
   button.append(n, label, ar, p); button.onclick = () => { $('#navigation-dialog').close(); openBook(page, !state.open); };
   return button;
 }
@@ -287,10 +289,12 @@ $('#close-book').onclick = closeBook;
 $('#explore-button').onclick = () => showNavigation(); $('#contents-button').onclick = () => showNavigation();
 $('#next-page').onclick = () => step(1); $('#previous-page').onclick = () => step(-1);
 $('#page-form').onsubmit = event => { event.preventDefault(); if ($('#page-form').reportValidity()) goToPage($('#page-input').value, 'jump'); };
-$('#bookmark-button').onclick = () => { if (state.busy) return; const saved = state.bookmarks.includes(state.page); state.bookmarks = saved ? state.bookmarks.filter(n => n !== state.page) : [...state.bookmarks,state.page]; storage.set('bookmarks', state.bookmarks); updateUI(); toast(saved ? 'Bookmark removed' : `Page ${state.page} bookmarked`); };
+$('#page-input').oninvalid = () => $('#page-input').setCustomValidity('Shkruaj një numër të plotë të faqes nga 1 deri në 604.');
+$('#page-input').oninput = () => $('#page-input').setCustomValidity('');
+$('#bookmark-button').onclick = () => { if (state.busy) return; const saved = state.bookmarks.includes(state.page); state.bookmarks = saved ? state.bookmarks.filter(n => n !== state.page) : [...state.bookmarks,state.page]; storage.set('bookmarks', state.bookmarks); updateUI(); toast(saved ? 'Faqja u hoq nga të ruajturat' : `Faqja ${state.page} u ruajt`); };
 $('#theme-button').onclick = () => { state.night = !state.night; storage.set('night',state.night); applyTheme(); };
-function applyTheme() { document.body.classList.toggle('night',Boolean(state.night)); $('#theme-button').setAttribute('aria-pressed',String(Boolean(state.night))); $('#theme-button').setAttribute('aria-label',state.night ? 'Switch to warm paper reading' : 'Switch to night reading'); }
-$('#focus-button').onclick = () => { state.focus = !state.focus; document.body.classList.toggle('focus',state.focus); $('#focus-button').setAttribute('aria-pressed',String(state.focus)); $('#focus-button').setAttribute('aria-label',state.focus ? 'Exit distraction free reading' : 'Enter distraction free reading'); requestAnimationFrame(fitAll); };
+function applyTheme() { document.body.classList.toggle('night',Boolean(state.night)); $('#theme-button').setAttribute('aria-pressed',String(Boolean(state.night))); $('#theme-button').setAttribute('aria-label',state.night ? 'Kalo në pamjen e letrës së çelët' : 'Kalo në leximin e natës'); }
+$('#focus-button').onclick = () => { state.focus = !state.focus; document.body.classList.toggle('focus',state.focus); $('#focus-button').setAttribute('aria-pressed',String(state.focus)); $('#focus-button').setAttribute('aria-label',state.focus ? 'Çaktivizo leximin pa shpërqendrime' : 'Aktivizo leximin pa shpërqendrime'); requestAnimationFrame(fitAll); };
 document.querySelectorAll('.about-trigger').forEach(button => button.onclick = () => $('#about-dialog').showModal());
 document.querySelectorAll('.dialog-close').forEach(button => button.onclick = () => button.closest('dialog').close());
 document.querySelectorAll('dialog').forEach(dialog => dialog.addEventListener('click',event => { const rect = dialog.getBoundingClientRect(); if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) dialog.close(); }));

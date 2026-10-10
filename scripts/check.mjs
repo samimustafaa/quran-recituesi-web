@@ -4,6 +4,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {normalizePage, spreadFor, adjacentPage, groupPageLines, pageTurnJourney, journeyTurnDuration} from '../dist/reader-core.js';
 import {paintOpeningPage} from '../dist/opening-page.js';
+import {surahMeanings, normalizeSearch} from '../dist/surah-names.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = p => JSON.parse(fs.readFileSync(path.join(root,'dist',p),'utf8'));
 const chapters = read('data/chapters.json');
@@ -16,6 +17,10 @@ paintOpeningPage(drawing,firstPage,'QuranPage1',chapters);
 assert.deepEqual(openingText.filter(item=>item.font.includes('QuranPage1')).flatMap(item=>item.text.split(' ')),firstPage.verses.flatMap(verse=>verse.words.map(word=>word[1])),'Opening-book texture must include every first-page glyph exactly once and in source order');
 assert.ok(openingText.some(item=>item.text==='سورة '+chapters[0].name_arabic),'Opening-book texture must identify Al-Fatihah');
 assert.equal(chapters.length,114); assert.equal(index.length,604); assert.equal(provenance.verses,6236);
+assert.equal(surahMeanings.length,114,'Every Surah needs an Albanian interface label');
+assert.ok(surahMeanings.every(name=>typeof name==='string'&&name.trim()));
+assert.equal(normalizeSearch('KËSHILLIMI'),normalizeSearch('keshillimi'),'Albanian search should work without typing accents');
+assert.equal(normalizeSearch('ÇARJA'),normalizeSearch('carja'));
 const verseMap = new Map();
 for (let p=1;p<=604;p++) {
   const data=read(`data/${p}.json`); assert.equal(data.page,p); assert.ok(data.verses.length);
@@ -51,6 +56,7 @@ for (const mobile of [false, true]) {
   }
 }
 const html=fs.readFileSync(path.join(root,'dist/index.html'),'utf8');
+assert.ok(html.includes('<html lang="sq">'),'The interface language must be Albanian');
 const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(ids.length,new Set(ids).size,'Duplicate HTML ids');
 for(const match of html.matchAll(/(?:src|href)="(\/(?!\/)[^"#]+)"/g))assert.ok(fs.existsSync(path.join(root,'dist',match[1])),`Missing asset ${match[1]}`);
 console.log('Passed: 604 complete pages, 114 Surahs, 6,236 verses, no dropped words, bundled page fonts, Surah headings, At-Tawbah, RTL navigation and local assets.');
