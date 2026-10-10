@@ -105,3 +105,6 @@ body.night .about-dialog .about-note{color:#bac8b7}
 body.night .landing-bottom{color:#cbd4c7}
 body.night .landing-bottom button{color:#fff9eb}
 body.night .about-dialog a:hover,body.night .landing-bottom button:hover{color:#fff9eb}
+
+.about-dialog a{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.about-dialog a:hover{text-decoration-thickness:2px}
