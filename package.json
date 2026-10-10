@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "An original Three.js Quran reading experience by Sami Mustafa with ChatGPT.",
-  "scripts": { "check": "node scripts/check.mjs" }
+  "description": "Mus'haf — an Albanian Quran reader by Sami Mustafa with authentic Quran.com Arabic and animated page turns.",
+  "scripts": {
+    "check": "node scripts/check.mjs"
+  }
 }

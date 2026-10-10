@@ -117,7 +117,7 @@ function updateUI({persist = true, prefetch = true} = {}) {
   const [left, right] = spreadFor(state.page, media.matches);
   const info = state.index.find(p => p.page === state.page) || state.index.find(p => p.page === right);
   $('#location-surah').textContent = info ? info.chapters.map(chapterName).join(' · ') : 'Kurani';
-  $('#location-juz').textContent = `Xhuzi ${info?.juz || 1} · Mushafi i Medinës`;
+  $('#location-juz').textContent = `Xhuzi ${info?.juz || 1} · Mus'hafi i Medinës`;
   $('#page-input').value = state.page;
   $('#page-input').setCustomValidity('');
   $('#page-total').textContent = left === null ? '/ 604' : `· ${right}–${left} / 604`;
