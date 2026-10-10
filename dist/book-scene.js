@@ -17,7 +17,7 @@ export async function createBookScene(canvas, reducedMotion, firstPage) {
   const key=new THREE.DirectionalLight(0xfff3ce,3.3);key.position.set(-4,5,8);key.castShadow=true;key.shadow.mapSize.set(1024,1024);key.shadow.camera.left=-6;key.shadow.camera.right=6;key.shadow.camera.top=6;key.shadow.camera.bottom=-6;key.shadow.normalBias=.025;key.shadow.bias=-.0002;key.shadow.radius=4;scene.add(key);
   const fill=new THREE.DirectionalLight(0xc8eadb,1.6);fill.position.set(4,-1,4);scene.add(fill);
   const root=new THREE.Group();root.position.set(.25,.25,0);scene.add(root);
-  const book=new THREE.Group();book.rotation.set(-.21,-.32,-.12);root.add(book);
+  const book=new THREE.Group();book.rotation.set(-.16,-.24,0);root.add(book);
   const [coverTexture, prepared]=await Promise.all([new THREE.TextureLoader().loadAsync('/assets/cover.svg'),firstPage]);coverTexture.colorSpace=THREE.SRGBColorSpace;coverTexture.anisotropy=renderer.capabilities.getMaxAnisotropy();
   await document.fonts.load('49px Uthmani');
   const firstPageTexture=new THREE.CanvasTexture(createOpeningPage(prepared.data,prepared.font,prepared.chapters));firstPageTexture.colorSpace=THREE.SRGBColorSpace;firstPageTexture.anisotropy=renderer.capabilities.getMaxAnisotropy();
@@ -44,9 +44,9 @@ export async function createBookScene(canvas, reducedMotion, firstPage) {
   const shape=new THREE.Shape();shape.moveTo(-1.95,-2.2);shape.bezierCurveTo(-1.6,-2.28,-1.5,-1.85,-1.1,-1.82);shape.lineTo(.1,-.8);shape.lineTo(1.88,1.55);shape.bezierCurveTo(2.32,2.02,2.37,2.5,2.0,2.62);shape.bezierCurveTo(1.67,2.7,1.9,2.3,1.5,2.36);shape.lineTo(-1.9,-1.75);shape.bezierCurveTo(-2.18,-2.03,-2.21,-2.2,-1.95,-2.2);
   const geometry=new THREE.ExtrudeGeometry(shape,{depth:.1,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:.045,bevelThickness:.025});
   for(const mirrored of [false,true]){const leg=new THREE.Mesh(geometry,wood);leg.scale.set(mirrored?-1:1,1,1);leg.castShadow=true;leg.receiveShadow=true;stand.add(leg);}
-  const ribbonPath=new THREE.CatmullRomCurve3([new THREE.Vector3(1.2,-2.4,-.03),new THREE.Vector3(1.55,-2.6,-.1),new THREE.Vector3(1.86,-2.95,-.05),new THREE.Vector3(1.91,-3.32,.02)]);
-  const ribbon=new THREE.Mesh(new THREE.TubeGeometry(ribbonPath,30,.022,5,false),gold);book.add(ribbon);
-  const tassel=new THREE.Mesh(new THREE.ConeGeometry(.075,.3,10),gold);tassel.position.set(1.91,-3.45,.02);tassel.rotation.z=.08;book.add(tassel);
+  const ribbonPath=new THREE.LineCurve3(new THREE.Vector3(1.2,-2.4,-.03),new THREE.Vector3(1.2,-3.3,-.03));
+  const ribbon=new THREE.Mesh(new THREE.TubeGeometry(ribbonPath,1,.022,8,false),gold);book.add(ribbon);
+  const tassel=new THREE.Mesh(new THREE.ConeGeometry(.075,.3,10),gold);tassel.position.set(1.2,-3.45,-.03);book.add(tassel);
   const shadow=new THREE.Mesh(new THREE.PlaneGeometry(16,16),new THREE.ShadowMaterial({opacity:.16}));shadow.position.z=-2.4;shadow.receiveShadow=true;scene.add(shadow);
 
   const openingDuration=2000;
@@ -60,8 +60,8 @@ export async function createBookScene(canvas, reducedMotion, firstPage) {
     const smoothing=1-Math.exp(-dt*8);pointer.lerp(targetPointer,smoothing);
     if(targetOpening===1){const progress=Math.min(1,Math.max(0,(time-openStarted)/openingDuration));opening=progress<.5?4*progress**3:1-(-2*progress+2)**3/2;}
     pose();
-    book.rotation.x=-.21*(1-opening)+pointer.y*.045*(1-opening);book.rotation.y=-.32*(1-opening)+pointer.x*.1*(1-opening);book.rotation.z=-.12*(1-opening);
-    if(!reducedMotion){book.position.y=Math.sin(time*.00065)*.032;tassel.rotation.z=.08+Math.sin(time*.001)*.03;}
+    book.rotation.x=-.16*(1-opening)+pointer.y*.045*(1-opening);book.rotation.y=-.24*(1-opening)+pointer.x*.1*(1-opening);book.rotation.z=0;
+    if(!reducedMotion){book.position.y=Math.sin(time*.00065)*.032;}
     render();
     if(targetOpening===1&&opening>=1)finishOpen();
     if(!reducedMotion||Math.abs(targetOpening-opening)>.001)raf=requestAnimationFrame(tick);
@@ -76,7 +76,7 @@ export async function createBookScene(canvas, reducedMotion, firstPage) {
   resize();canvas.classList.add('ready');document.querySelector('#fallback-book').classList.add('inactive');document.querySelector('#fallback-book').tabIndex=-1;start();
   return {
     open(){if(reducedMotion||!canvas.classList.contains('ready'))return Promise.resolve();targetOpening=1;openStarted=performance.now();return new Promise(resolve=>{resolveOpen=resolve;openTimer=setTimeout(()=>{opening=1;pose();finishOpen();},openingDuration+800);start();});},
-    close(){finishOpen();targetOpening=0;opening=0;pose();book.rotation.set(-.21,-.32,-.12);start();}
+    close(){finishOpen();targetOpening=0;opening=0;pose();book.rotation.set(-.16,-.24,0);start();}
   };
 }
 function woodGrain(){const canvas=document.createElement('canvas');canvas.width=256;canvas.height=1024;const context=canvas.getContext('2d');context.fillStyle='#d2a474';context.fillRect(0,0,256,1024);let seed=29;function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
