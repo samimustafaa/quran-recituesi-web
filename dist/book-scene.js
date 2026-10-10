@@ -34,14 +34,16 @@ export async function createBookScene(canvas, reducedMotion) {
   const lid=new THREE.Mesh(new THREE.BoxGeometry(3.35,5.04,.075),[green,green,gold,gold,front,green]);lid.position.x=-1.675;lid.castShadow=true;lid.receiveShadow=true;hinge.add(lid);
   const woodTexture=woodGrain();
   const wood=new THREE.MeshStandardMaterial({map:woodTexture,color:0x99734b,roughness:.76,metalness:0});
-  const stand=new THREE.Group();stand.position.set(.08,-.85,-.68);stand.rotation.set(.06,.06,0);root.add(stand);
+  // Keep the stand behind the entire tilted book, including its far top corner.
+  // A small z offset is not enough once the cover rotates around both axes.
+  const stand=new THREE.Group();stand.position.set(.08,-1.15,-2);stand.rotation.set(.06,.06,0);stand.scale.setScalar(.92);root.add(stand);
   const shape=new THREE.Shape();shape.moveTo(-1.95,-2.2);shape.bezierCurveTo(-1.6,-2.28,-1.5,-1.85,-1.1,-1.82);shape.lineTo(.1,-.8);shape.lineTo(1.88,1.55);shape.bezierCurveTo(2.32,2.02,2.37,2.5,2.0,2.62);shape.bezierCurveTo(1.67,2.7,1.9,2.3,1.5,2.36);shape.lineTo(-1.9,-1.75);shape.bezierCurveTo(-2.18,-2.03,-2.21,-2.2,-1.95,-2.2);
   const geometry=new THREE.ExtrudeGeometry(shape,{depth:.1,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:.045,bevelThickness:.025});
   for(const mirrored of [false,true]){const leg=new THREE.Mesh(geometry,wood);leg.scale.set(mirrored?-1:1,1,1);leg.castShadow=true;leg.receiveShadow=true;stand.add(leg);}
   const ribbonPath=new THREE.CatmullRomCurve3([new THREE.Vector3(1.2,-2.4,-.03),new THREE.Vector3(1.55,-2.6,-.1),new THREE.Vector3(1.86,-2.95,-.05),new THREE.Vector3(1.91,-3.32,.02)]);
   const ribbon=new THREE.Mesh(new THREE.TubeGeometry(ribbonPath,30,.022,5,false),gold);book.add(ribbon);
   const tassel=new THREE.Mesh(new THREE.ConeGeometry(.075,.3,10),gold);tassel.position.set(1.91,-3.45,.02);tassel.rotation.z=.08;book.add(tassel);
-  const shadow=new THREE.Mesh(new THREE.PlaneGeometry(16,16),new THREE.ShadowMaterial({opacity:.16}));shadow.position.z=-1.08;shadow.receiveShadow=true;scene.add(shadow);
+  const shadow=new THREE.Mesh(new THREE.PlaneGeometry(16,16),new THREE.ShadowMaterial({opacity:.16}));shadow.position.z=-2.4;shadow.receiveShadow=true;scene.add(shadow);
 
   let opening=0, targetOpening=0, last=0, raf=0, visible=true, resolveOpen;
   const pointer=new THREE.Vector2();const targetPointer=new THREE.Vector2();
