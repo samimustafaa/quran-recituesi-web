@@ -1,4 +1,5 @@
 import {TOTAL_PAGES, normalizePage, spreadFor, adjacentPage, groupPageLines, pageTurnJourney, journeyTurnDuration} from './reader-core.js';
+import {createOpeningPage} from './opening-page.js';
 
 const $ = selector => document.querySelector(selector);
 const media = matchMedia('(max-width: 720px)');
@@ -9,7 +10,7 @@ const storage = {
 };
 const state = {page: 1, open: false, busy: false, chapters: [], index: [], tab: 'surahs', bookmarks: storage.get('bookmarks', []), night: storage.get('night', false), focus: false};
 state.bookmarks = Array.isArray(state.bookmarks) ? [...new Set(state.bookmarks.filter(p => Number.isInteger(p) && p >= 1 && p <= TOTAL_PAGES))] : [];
-let bookScene, metaPromise, toastTimer, pendingJump, renderToken = 0;
+let bookScene, bookScenePromise, metaPromise, toastTimer, pendingJump, renderToken = 0;
 const pageCache = new Map();
 const fontCache = new Map();
 const FONT_REVISION = '74eb4e20f4e78cc11c055a3e130136e8dbb7743e';
@@ -194,23 +195,48 @@ async function turnLeaf(prepared, direction, {duration = media.matches ? 530 : 7
   leaf.style.visibility = 'hidden'; animation.cancel(); front.replaceChildren(); back.replaceChildren();
 }
 async function openBook(page = 1, animate = true) {
+  if (state.opening) return;
   if (state.open) { await goToPage(page, 'jump'); return; }
   const target = normalizePage(page);
+  const startPage = animate && !reducedMotion.matches ? 1 : target;
+  const initialPages = preparePages(startPage).catch(() => null);
   preparePages(target).catch(() => {});
-  state.open = true;
-  $('#open-button').disabled = true;
-  if (animate && bookScene && !reducedMotion.matches) await bookScene.open();
+  state.opening = true; state.open = true;
+  $('#open-button').disabled = true; $('#book-stage').setAttribute('aria-busy','true');
+  const caption = $('#book-caption-label'); caption.textContent = 'OPENING THE QURAN';
+  try {
+    const [prepared] = await Promise.all([initialPages,animate ? bookScenePromise : null]);
+    if (animate && !reducedMotion.matches) {
+      if (bookScene && $('#book-canvas').classList.contains('ready')) await bookScene.open();
+      else if (prepared?.[1]) {
+        await document.fonts.load('49px Uthmani');
+        const pageCanvas = createOpeningPage(prepared[1].data,prepared[1].font,state.chapters);pageCanvas.className='fallback-page';
+        $('#fallback-book').append(pageCanvas); $('#fallback-book').classList.add('opening');
+        await new Promise(resolve=>setTimeout(resolve,2000));
+      }
+      await new Promise(resolve=>setTimeout(resolve,550));
+    }
+    // Prepare real reading pages before revealing the reader, avoiding a blank handoff.
+    await goToPage(startPage);
+    if (animate && !reducedMotion.matches) {
+      const fade = $('#landing').animate([{opacity:1},{opacity:0}],{duration:280,easing:'ease-in',fill:'forwards'});
+      try { await fade.finished; } catch { /* Continue if the animation is interrupted. */ }
+      fade.cancel();
+    }
+  } catch { toast('Opening the reader…'); }
+  finally { state.opening = false; $('#open-button').disabled = false; $('#book-stage').setAttribute('aria-busy','false');caption.textContent = 'TOUCH TO OPEN'; }
   $('#landing').hidden = true; $('#reader').hidden = false; document.body.classList.add('reader-visible');
-  $('#open-button').disabled = false;
+  if (!$('#right-page').querySelector('.quran-lines') && !$('#right-page').querySelector('.page-error')) await goToPage(startPage);
+  fitAll();
   window.scrollTo({top:0, behavior:'instant'});
-  if (animate && target !== 1 && !reducedMotion.matches) { await goToPage(1); await goToPage(target, 'jump'); }
-  else await goToPage(target);
+  if (startPage !== target) await goToPage(target, 'jump');
   $('#close-book').focus({preventScroll:true});
 }
 function closeBook() {
-  if (state.busy) return;
+  if (state.busy || state.opening) return;
   state.open = false; $('#reader').hidden = true; $('#landing').hidden = false; document.body.classList.remove('reader-visible', 'focus'); state.focus = false;
   $('#focus-button').setAttribute('aria-pressed','false'); if (bookScene) bookScene.close();
+  $('#fallback-book').classList.remove('opening'); $('#fallback-book').querySelector('.fallback-page')?.remove();
   history.replaceState(null, '', location.pathname + location.search);
   showResume(); $('#open-button').focus({preventScroll:true}); window.scrollTo({top:0, behavior:'instant'});
 }
@@ -251,7 +277,7 @@ function navigationRow(number, title, subtitle, arabic, page) {
   button.append(n, label, ar, p); button.onclick = () => { $('#navigation-dialog').close(); openBook(page, !state.open); };
   return button;
 }
-function step(direction) { if (!state.open || state.busy) return; const next = adjacentPage(state.page,media.matches,direction); const currentSpread = spreadFor(state.page,media.matches)[1]; if (spreadFor(next,media.matches)[1] === currentSpread || (direction < 0 && currentSpread === 1)) return; goToPage(next,true,direction); }
+function step(direction) { if (!state.open || state.busy || state.opening) return; const next = adjacentPage(state.page,media.matches,direction); const currentSpread = spreadFor(state.page,media.matches)[1]; if (spreadFor(next,media.matches)[1] === currentSpread || (direction < 0 && currentSpread === 1)) return; goToPage(next,true,direction); }
 $('#open-button').onclick = () => openBook(1);
 $('#fallback-book').onclick = () => openBook(1);
 $('#book-canvas').onclick = () => openBook(1);
@@ -281,10 +307,14 @@ let mouseStart;
 $('#mushaf-book').addEventListener('pointerdown', event => { if (event.pointerType === 'mouse' && !event.target.closest('.quran-word')) mouseStart = {x:event.clientX,y:event.clientY}; });
 window.addEventListener('pointerup', event => { if (!mouseStart) return; const dx=event.clientX-mouseStart.x,dy=event.clientY-mouseStart.y; if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.4) step(dx>0?1:-1); mouseStart=null; });
 const resizeObserver = new ResizeObserver(() => { if (state.open && !state.busy) fitAll(); }); resizeObserver.observe($('#mushaf-book'));
-media.addEventListener('change', () => { if (state.open) { if (state.busy) setTimeout(() => goToPage(state.page),800); else goToPage(state.page); } });
+media.addEventListener('change', () => { if (state.open && !state.opening) { if (state.busy) setTimeout(() => goToPage(state.page),800); else goToPage(state.page); } });
 window.addEventListener('hashchange', () => { const match=location.hash.match(/^#page=(\d+)$/); if(match) openBook(normalizePage(match[1]),false); });
 showResume(); applyTheme();
 loadMetadata().catch(() => {});
 getPage(1).catch(() => {}); getPage(2).catch(() => {}); getFont(1).catch(() => {}); getFont(2).catch(() => {});
 const initialPage = location.hash.match(/^#page=(\d+)$/); if(initialPage) openBook(normalizePage(initialPage[1]),false);
-if (!initialPage) import('./book-scene.js').then(async ({createBookScene}) => { bookScene = await createBookScene($('#book-canvas'), reducedMotion.matches); }).catch(() => { /* The original illustrated cover remains a fully functional fallback. */ });
+if (!initialPage) bookScenePromise = import('./book-scene.js').then(async ({createBookScene}) => {
+  const pages = await preparePages(1,true);
+  const firstPage = {...pages[1],chapters:state.chapters};
+  bookScene = await createBookScene($('#book-canvas'),reducedMotion.matches,firstPage);
+}).catch(() => { /* The original illustrated cover remains a fully functional fallback. */ });

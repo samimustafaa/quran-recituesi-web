@@ -3,11 +3,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {normalizePage, spreadFor, adjacentPage, groupPageLines, pageTurnJourney, journeyTurnDuration} from '../dist/reader-core.js';
+import {paintOpeningPage} from '../dist/opening-page.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = p => JSON.parse(fs.readFileSync(path.join(root,'dist',p),'utf8'));
 const chapters = read('data/chapters.json');
 const index = read('data/index.json');
 const provenance = read('data/provenance.json');
+const openingText=[];
+const drawing={fillRect(){},strokeRect(){},save(){},restore(){},translate(){},rotate(){},measureText(text){return {width:text.length*40};},fillText(text){openingText.push({text,font:this.font});}};
+const firstPage=read('data/1.json');
+paintOpeningPage(drawing,firstPage,'QuranPage1',chapters);
+assert.deepEqual(openingText.filter(item=>item.font.includes('QuranPage1')).flatMap(item=>item.text.split(' ')),firstPage.verses.flatMap(verse=>verse.words.map(word=>word[1])),'Opening-book texture must include every first-page glyph exactly once and in source order');
+assert.ok(openingText.some(item=>item.text==='سورة '+chapters[0].name_arabic),'Opening-book texture must identify Al-Fatihah');
 assert.equal(chapters.length,114); assert.equal(index.length,604); assert.equal(provenance.verses,6236);
 const verseMap = new Map();
 for (let p=1;p<=604;p++) {
