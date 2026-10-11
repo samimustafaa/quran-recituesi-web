@@ -108,3 +108,9 @@ body.night .about-dialog a:hover,body.night .landing-bottom button:hover{color:#
 
 .about-dialog a{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
 .about-dialog a:hover{text-decoration-thickness:2px}
+
+/* Preserve native Arabic calligraphy and readable contrast. */
+.mushaf-book{transform:none}
+.mushaf-page{--paper-ink:#17251f}
+body.night .mushaf-page{--paper-ink:#fff6e2}
+.mushaf-page [lang=ar],.mushaf-page .quran-lines{font-synthesis:none;text-rendering:geometricPrecision;-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto}
