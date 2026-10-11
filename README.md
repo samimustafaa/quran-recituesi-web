@@ -20,7 +20,6 @@
 - **Responsive reading:** desktop spreads and single-page mobile layouts.
 - **Personal reading tools:** saved pages, reading position, night mode, and distraction-free mode.
 - **Reduced-motion support:** adapts animations to the reader's preference.
-- **Reading zoom:** smooth 100–300% magnification, pinch zoom, dragging, and a one-tap reset on desktop and mobile.
 
 ## **Tech stack**
 

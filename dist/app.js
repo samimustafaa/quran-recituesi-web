@@ -1,7 +1,6 @@
 import {TOTAL_PAGES, normalizePage, spreadFor, adjacentPage, groupPageLines, pageTurnJourney, journeyTurnDuration} from './reader-core.js';
 import {createOpeningPage} from './opening-page.js';
 import {surahMeaning, normalizeSearch} from './surah-names.js';
-import {createReaderZoom} from './reader-zoom.js';
 
 const $ = selector => document.querySelector(selector);
 const media = matchMedia('(max-width: 720px)');
@@ -12,7 +11,6 @@ const storage = {
 };
 const state = {page: 1, open: false, busy: false, chapters: [], index: [], tab: 'surahs', bookmarks: storage.get('bookmarks', []), night: storage.get('night', false), focus: false};
 state.bookmarks = Array.isArray(state.bookmarks) ? [...new Set(state.bookmarks.filter(p => Number.isInteger(p) && p >= 1 && p <= TOTAL_PAGES))] : [];
-const readerZoom = createReaderZoom({viewport: $('#zoom-viewport'), content: $('#zoom-content'), book: $('#mushaf-book'), minus: $('#zoom-out'), plus: $('#zoom-in'), reset: $('#zoom-reset'), hint: $('#zoom-hint'), reducedMotion, active: () => state.open && !state.opening, onSwipe: direction => step(direction)});
 let bookScene, bookScenePromise, metaPromise, toastTimer, pendingJump, renderToken = 0;
 const pageCache = new Map();
 const fontCache = new Map();
@@ -114,7 +112,6 @@ function installPages(prepared) {
     const article = pageElement(prepared[i], position); article.id = position + '-page'; previous.replaceWith(article);
   }
   fitAll();
-  readerZoom.pageChanged();
 }
 function updateUI({persist = true, prefetch = true} = {}) {
   const [left, right] = spreadFor(state.page, media.matches);
@@ -239,7 +236,6 @@ async function openBook(page = 1, animate = true) {
 }
 function closeBook() {
   if (state.busy || state.opening) return;
-  readerZoom.reset();
   state.open = false; $('#reader').hidden = true; $('#landing').hidden = false; document.body.classList.remove('reader-visible', 'focus'); state.focus = false;
   $('#focus-button').setAttribute('aria-pressed','false'); if (bookScene) bookScene.close();
   $('#fallback-book').classList.remove('opening'); $('#fallback-book').querySelector('.fallback-page')?.remove();
@@ -306,8 +302,14 @@ document.querySelectorAll('[data-tab]').forEach(button => button.onclick = () =>
 $('.tab-list').addEventListener('keydown', event => { if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return; const tabs = [...document.querySelectorAll('[data-tab]')]; const current = tabs.indexOf(document.activeElement); if (current < 0) return; event.preventDefault(); const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length; tabs[next].focus(); tabs[next].click(); });
 $('#surah-search').oninput = renderNavigation;
 $('.brand').onclick = event => { event.preventDefault(); if (state.open) closeBook(); else window.scrollTo({top:0,behavior:'smooth'}); };
+let touchStart;
+$('#mushaf-book').addEventListener('touchstart', event => { if (event.touches.length === 1) touchStart = {x:event.touches[0].clientX,y:event.touches[0].clientY}; }, {passive:true});
+$('#mushaf-book').addEventListener('touchend', event => { if (!touchStart || !event.changedTouches.length) return; const dx=event.changedTouches[0].clientX-touchStart.x,dy=event.changedTouches[0].clientY-touchStart.y; if (Math.abs(dx)>45 && Math.abs(dx)>Math.abs(dy)*1.4) step(dx>0?1:-1); touchStart=null; }, {passive:true});
 document.addEventListener('keydown',event => { if (!state.open || document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return; if (event.key==='ArrowLeft') { event.preventDefault(); step(1); } if (event.key==='ArrowRight') { event.preventDefault(); step(-1); } if (event.key==='Escape' && state.focus) $('#focus-button').click(); });
 document.addEventListener('copy',event => { const selection = getSelection(); if (!selection?.rangeCount || selection.isCollapsed || !$('#mushaf-book').contains(selection.anchorNode)) return; const fragment = selection.getRangeAt(0).cloneContents(); const words=[...fragment.querySelectorAll('[data-text]')]; if (!words.length) { const anchor = selection.anchorNode.nodeType === Node.ELEMENT_NODE ? selection.anchorNode : selection.anchorNode.parentElement; const word = anchor?.closest('.quran-word'); if(word) words.push(word); } if (words.length && event.clipboardData) { event.clipboardData.setData('text/plain',words.map(w=>w.dataset.text).join(' ')); event.preventDefault(); } });
+let mouseStart;
+$('#mushaf-book').addEventListener('pointerdown', event => { if (event.pointerType === 'mouse' && !event.target.closest('.quran-word')) mouseStart = {x:event.clientX,y:event.clientY}; });
+window.addEventListener('pointerup', event => { if (!mouseStart) return; const dx=event.clientX-mouseStart.x,dy=event.clientY-mouseStart.y; if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.4) step(dx>0?1:-1); mouseStart=null; });
 const resizeObserver = new ResizeObserver(() => { if (state.open && !state.busy) fitAll(); }); resizeObserver.observe($('#mushaf-book'));
 media.addEventListener('change', () => { if (state.open && !state.opening) { if (state.busy) setTimeout(() => goToPage(state.page),800); else goToPage(state.page); } });
 window.addEventListener('hashchange', () => { const match=location.hash.match(/^#page=(\d+)$/); if(match) openBook(normalizePage(match[1]),false); });
