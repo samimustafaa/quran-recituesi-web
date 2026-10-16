@@ -4,7 +4,7 @@ import {Browser} from '@capacitor/browser';
 import {Preferences} from '@capacitor/preferences';
 import {createNativeStorage} from './preferences.js';
 import {CapacitorUpdater} from '@capgo/capacitor-updater';
-import {createUpdateChecker, FEED_URL} from './updates.js';
+import {createUpdateChecker, readRejectedVersion, FEED_URL} from './updates.js';
 
 async function startApp() {
 if (Capacitor.isNativePlatform()) {
@@ -44,8 +44,9 @@ if (Capacitor.isNativePlatform()) {
   // Missing this signal lets the native watchdog roll back a broken startup.
   await CapacitorUpdater.notifyAppReady();
   fetch('/update-runtime.json').then(response => response.json()).then(async runtime => {
+    const blockedVersion = await readRejectedVersion(CapacitorUpdater, Preferences);
     const check = createUpdateChecker({
-      updater: CapacitorUpdater, runtime, getNativeInfo: () => App.getInfo(),
+      updater: CapacitorUpdater, runtime, blockedVersion, getNativeInfo: () => App.getInfo(),
       getFeed: async () => {
         const result = await CapacitorHttp.get({url: FEED_URL, responseType: 'json', connectTimeout: 10000, readTimeout: 10000});
         if (result.status !== 200) throw Error('Update channel unavailable');

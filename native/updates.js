@@ -26,7 +26,17 @@ export function validateUpdate(feed, nativeInfo, runtime) {
 }
 
 // No reload/set calls: stage verified files while the current reader stays open.
-export function createUpdateChecker({updater, getFeed, getNativeInfo, runtime, now = Date.now}) {
+export async function readRejectedVersion(updater, preferences) {
+  const failed = await updater.getFailedUpdate();
+  const key = 'mushaf.rejectedUpdate';
+  if (failed?.bundle?.version) {
+    try { await preferences.set({key, value:failed.bundle.version}); } catch { /* Still block it in this session. */ }
+    return failed.bundle.version;
+  }
+  try { return (await preferences.get({key})).value; } catch { return null; }
+}
+
+export function createUpdateChecker({updater, getFeed, getNativeInfo, runtime, blockedVersion, now = Date.now}) {
   let running = false, lastCheck = -Infinity;
   return async function check() {
     if (running || now() - lastCheck < 60 * 60 * 1000) return;
@@ -37,7 +47,9 @@ export function createUpdateChecker({updater, getFeed, getNativeInfo, runtime, n
         getFeed(), getNativeInfo(), updater.current(), updater.getNextBundle(), updater.list()
       ]);
       const update = validateUpdate(feed, info, runtime);
-      if (!update || current.bundle.version === update.version || pending || list.bundles.some(b => b.version === update.version && b.status === 'error')) return;
+      if (!update || current.bundle.version === update.version || pending || blockedVersion === update.version) return;
+      // A download error is retryable; a startup rollback is blocked above.
+      for (const bundle of list.bundles.filter(b => b.version === update.version && b.status === 'error')) await updater.delete({id:bundle.id});
       const existing = list.bundles.find(b => b.version === update.version && ['pending', 'success'].includes(b.status));
       const bundle = existing || await updater.download(update);
       await updater.next({id: bundle.id});

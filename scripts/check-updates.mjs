@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {validateUpdate, createUpdateChecker, FEED_URL, REPOSITORY} from '../native/updates.js';
+import {validateUpdate, createUpdateChecker, readRejectedVersion, FEED_URL, REPOSITORY} from '../native/updates.js';
 const hash = 'a'.repeat(64), source = 'b'.repeat(40);
 const entry = file_name => ({file_name, file_hash:hash, download_url:`https://raw.githubusercontent.com/${REPOSITORY}/${source}/dist/${file_name}`});
 const manifest = ['index.html','burimi.html','native.js','native.css','app.js','update-runtime.json'].map(entry);
@@ -19,7 +19,7 @@ function setup(options={}) {
   const updater={
     async current(){return {bundle:{version:'old'}};},async getNextBundle(){return null;},async list(){return {bundles:[]};},
     async download(update){calls.push(['download',update]);return {id:'verified-bundle'};},
-    async next(value){calls.push(['next',value]);},...options.updater
+    async next(value){calls.push(['next',value]);},async delete(value){calls.push(['delete',value]);},...options.updater
   };
   const check=createUpdateChecker({updater,getFeed:options.getFeed||asyncFeed,getNativeInfo:async()=>info,runtime,now:()=>100,...options.checker});
   return {calls,check};
@@ -29,9 +29,15 @@ let test=setup();await test.check();assert.deepEqual(test.calls.map(c=>c[0]),['d
 assert.equal(test.calls[0][1].url,FEED_URL);assert.equal(test.calls[0][1].manifest.length,1214);
 await test.check();assert.equal(test.calls.length,2,'Repeated foreground checks are throttled.');
 test=setup({updater:{download:async()=>{throw Error('Hash mismatch or interrupted download');}}});await test.check();assert.equal(test.calls.length,0,'Unverified files must never be activated.');
-for (const updater of [{getNextBundle:async()=>({id:'already-pending'})},{current:async()=>({bundle:{version:feed.version}})},{list:async()=>({bundles:[{version:feed.version,status:'error'}]})}]) {
+for (const updater of [{getNextBundle:async()=>({id:'already-pending'})},{current:async()=>({bundle:{version:feed.version}})}]) {
   test=setup({updater});await test.check();assert.equal(test.calls.length,0);
 }
+test=setup({checker:{blockedVersion:feed.version}});await test.check();assert.equal(test.calls.length,0,'A bundle rolled back on startup must not be reinstalled.');
+test=setup({updater:{list:async()=>({bundles:[{id:'interrupted',version:feed.version,status:'error'}]})}});await test.check();assert.deepEqual(test.calls.map(c=>c[0]),['delete','download','next'],'Interrupted downloads remain retryable.');
+const rejected = new Map();
+const preferences={async set({key,value}){rejected.set(key,value);},async get({key}){return {value:rejected.get(key)||null};}};
+assert.equal(await readRejectedVersion({getFailedUpdate:async()=>({bundle:{version:feed.version}})},preferences),feed.version);
+assert.equal(await readRejectedVersion({getFailedUpdate:async()=>null},preferences),feed.version,'A consumed native rollback report must survive the next launch.');
 test=setup({updater:{list:async()=>({bundles:[{id:'cached',version:feed.version,status:'pending'}]})}});await test.check();assert.deepEqual(test.calls,[['next',{id:'cached'}]]);
 let connected=false;
 test=setup({getFeed:async()=>{if(!connected)throw Error('Offline');return feed;}});await test.check();connected=true;await test.check();assert.equal(test.calls.length,2,'An offline launch can retry when online.');
