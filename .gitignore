@@ -3,3 +3,4 @@ scripts/raw-quran.json
 .import-cache/
 __pycache__/
 .font-cache/
+node_modules/
