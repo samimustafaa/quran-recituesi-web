@@ -4,3 +4,7 @@ scripts/raw-quran.json
 __pycache__/
 .font-cache/
 node_modules/
+.android-cache/
+build/
+*.apk
+*.aab

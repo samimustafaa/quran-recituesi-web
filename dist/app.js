@@ -1,14 +1,12 @@
 import {TOTAL_PAGES, normalizePage, spreadFor, adjacentPage, groupPageLines, pageTurnJourney, journeyTurnDuration} from './reader-core.js';
 import {createOpeningPage} from './opening-page.js';
 import {surahMeaning, normalizeSearch} from './surah-names.js';
+import {storage, isNativeApp} from './platform.js';
+import {nativeBackAction} from './mobile-core.js';
 
 const $ = selector => document.querySelector(selector);
 const media = matchMedia('(max-width: 720px)');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const storage = {
-  get(key, fallback) { try { const value = JSON.parse(localStorage.getItem('mushaf.' + key)); return value ?? fallback; } catch { return fallback; } },
-  set(key, value) { try { localStorage.setItem('mushaf.' + key, JSON.stringify(value)); } catch { /* Reading remains available without persistent storage. */ } }
-};
 const state = {page: 1, open: false, busy: false, chapters: [], index: [], tab: 'surahs', bookmarks: storage.get('bookmarks', []), night: storage.get('night', false), focus: false};
 state.bookmarks = Array.isArray(state.bookmarks) ? [...new Set(state.bookmarks.filter(p => Number.isInteger(p) && p >= 1 && p <= TOTAL_PAGES))] : [];
 let bookScene, bookScenePromise, metaPromise, toastTimer, pendingJump, renderToken = 0;
@@ -33,8 +31,8 @@ function getPage(page) {
 function getFont(page) {
   if (!fontCache.has(page)) {
     const path = `public/fonts/quran/hafs/v2/woff2/p${page}.woff2`;
-    const primary = page <= 32 ? `/assets/fonts/p${page}.woff2` : `https://cdn.jsdelivr.net/gh/quran/quran.com-frontend-next@${FONT_REVISION}/${path}`;
-    const backup = `https://raw.githubusercontent.com/quran/quran.com-frontend-next/${FONT_REVISION}/${path}`;
+    const primary = isNativeApp || page <= 32 ? `/assets/fonts/p${page}.woff2` : `https://cdn.jsdelivr.net/gh/quran/quran.com-frontend-next@${FONT_REVISION}/${path}`;
+    const backup = isNativeApp ? primary : `https://raw.githubusercontent.com/quran/quran.com-frontend-next/${FONT_REVISION}/${path}`;
     const promise = new FontFace(`QuranPage${page}`, `url(${primary})`).load().catch(() => new FontFace(`QuranPage${page}`, `url(${backup})`).load()).then(font => { document.fonts.add(font); return font.family; }).catch(error => { fontCache.delete(page); throw error; });
     fontCache.set(page, promise);
   }
@@ -313,6 +311,14 @@ window.addEventListener('pointerup', event => { if (!mouseStart) return; const d
 const resizeObserver = new ResizeObserver(() => { if (state.open && !state.busy) fitAll(); }); resizeObserver.observe($('#mushaf-book'));
 media.addEventListener('change', () => { if (state.open && !state.opening) { if (state.busy) setTimeout(() => goToPage(state.page),800); else goToPage(state.page); } });
 window.addEventListener('hashchange', () => { const match=location.hash.match(/^#page=(\d+)$/); if(match) openBook(normalizePage(match[1]),false); });
+window.addEventListener('mushaf:back', () => {
+  const dialog = document.querySelector('dialog[open]');
+  const action = nativeBackAction({dialogOpen: Boolean(dialog), busy: state.busy, opening: state.opening, focus: state.focus, readerOpen: state.open});
+  if (action === 'close-dialog') dialog.close();
+  if (action === 'leave-focus') $('#focus-button').click();
+  if (action === 'close-reader') closeBook();
+  if (action === 'minimize') globalThis.MushafNative?.minimize();
+});
 showResume(); applyTheme();
 loadMetadata().catch(() => {});
 getPage(1).catch(() => {}); getPage(2).catch(() => {}); getFont(1).catch(() => {}); getFont(2).catch(() => {});

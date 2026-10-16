@@ -1,0 +1,14 @@
+html.native-app{background:var(--bg);overscroll-behavior:none}
+.native-app body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);overscroll-behavior:none}
+.native-app .site-header{height:68px}
+.native-app .source-page{margin-top:28px}
+.native-app body.night .source-page p,.native-app body.night .source-page li{color:#cbd4c7}
+@media(max-width:720px){
+  .native-app .reader{padding:0 12px}
+  .native-app .mushaf-book{width:100%}
+  .native-app .reader-scene{margin-top:22px}
+  .native-app .book-stage{min-height:340px}
+  .native-app .book-caption{font-size:15px}
+  .native-app .hero-copy h1{font-size:clamp(42px,12vw,62px)}
+  .native-app .navigation-dialog{max-height:calc(92dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+}

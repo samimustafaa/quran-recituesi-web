@@ -19,12 +19,14 @@
 - **Smooth navigation:** touch swipes, keyboard controls, and fast animated jumps to a page, Surah, Juz, or bookmark.
 - **Responsive reading:** desktop spreads and single-page mobile layouts.
 - **Personal reading tools:** saved pages, reading position, night mode, and distraction-free mode.
+- **Android app:** offline reading with all 604 page fonts, native navigation and on-device preferences. [Build and installation guide](ANDROID.md).
 - **Reduced-motion support:** adapts animations to the reader's preference.
 
 ## **Tech stack**
 
 | **Technology** | **Purpose** |
 | :--- | :--- |
+| **Capacitor 8 & Android** | Native Android package with bundled Quran content and device preferences |
 | **HTML5 & CSS3** | Responsive interface, typography, and page styling |
 | **JavaScript ES modules** | Reader controls, navigation, and application state |
 | **Three.js / WebGL** | Book scene, cover opening, lighting, and pointer movement |
