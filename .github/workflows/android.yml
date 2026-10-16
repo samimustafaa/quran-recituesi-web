@@ -4,9 +4,12 @@ on:
   push:
     branches: [feature/android-app]
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
+    concurrency:
+      group: android-update-channel
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -30,9 +33,21 @@ jobs:
           path: .android-cache
           key: quran-qcf-v2-74eb4e20f4e78cc11c055a3e130136e8dbb7743e
       - run: npm ci
+      - run: npm run android:update:check
       - run: npm run android:apk
       - uses: actions/upload-artifact@v4
         with:
           name: mushaf-android-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - run: npm run android:update
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mushaf-android-update
+          path: build/android-update/
+          if-no-files-found: error
+      - name: Publish verified Android update
+        if: github.ref == 'refs/heads/feature/android-app'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/publish-android-update.mjs

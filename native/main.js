@@ -1,8 +1,10 @@
-import {Capacitor, SystemBars, SystemBarsStyle} from '@capacitor/core';
+import {Capacitor, CapacitorHttp, SystemBars, SystemBarsStyle} from '@capacitor/core';
 import {App} from '@capacitor/app';
 import {Browser} from '@capacitor/browser';
 import {Preferences} from '@capacitor/preferences';
 import {createNativeStorage} from './preferences.js';
+import {CapacitorUpdater} from '@capgo/capacitor-updater';
+import {createUpdateChecker, FEED_URL} from './updates.js';
 
 async function startApp() {
 if (Capacitor.isNativePlatform()) {
@@ -37,6 +39,24 @@ if (document.querySelector('#open-button')) {
   await readerReady;
 }
 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+if (Capacitor.isNativePlatform()) {
+  // Confirm the locally rendered reader before any update network request.
+  // Missing this signal lets the native watchdog roll back a broken startup.
+  await CapacitorUpdater.notifyAppReady();
+  fetch('/update-runtime.json').then(response => response.json()).then(async runtime => {
+    const check = createUpdateChecker({
+      updater: CapacitorUpdater, runtime, getNativeInfo: () => App.getInfo(),
+      getFeed: async () => {
+        const result = await CapacitorHttp.get({url: FEED_URL, responseType: 'json', connectTimeout: 10000, readTimeout: 10000});
+        if (result.status !== 200) throw Error('Update channel unavailable');
+        return typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
+      }
+    });
+    await App.addListener('appStateChange', ({isActive}) => { if (isActive) void check(); });
+    window.addEventListener('online', () => void check());
+    void check();
+  }).catch(() => { /* Built-in reader stays available if update metadata is unavailable. */ });
+}
 document.body.classList.remove('app-booting');
 const loader = document.querySelector('#app-loader');
 if (loader) {

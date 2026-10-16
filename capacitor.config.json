@@ -2,6 +2,26 @@
   "appId": "com.samimustafa.mushaf",
   "appName": "Mus'haf",
   "webDir": "build/android-web",
-  "android": {"backgroundColor": "#f4f2eb", "allowMixedContent": false},
-  "plugins": {"SystemBars": {"insetsHandling": "native", "style": "DARK"}}
+  "android": {
+    "backgroundColor": "#f4f2eb",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "native",
+      "style": "DARK"
+    },
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "appReadyTimeout": 60000,
+      "responseTimeout": 30,
+      "statsUrl": "",
+      "updateUrl": "",
+      "channelUrl": "",
+      "autoDeleteFailed": false,
+      "autoDeletePrevious": true,
+      "keepUrlPathAfterReload": false,
+      "shakeMenu": false
+    }
+  }
 }

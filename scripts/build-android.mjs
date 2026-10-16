@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {build} from 'esbuild';
 import {fileURLToPath} from 'node:url';
 import {prepareFonts, FONT_REVISION} from './android-fonts.mjs';
+import {runtimeMetadata} from './android-update-metadata.mjs';
 
 const root = new URL('../', import.meta.url);
 const out = new URL('build/android-web/', root);
@@ -35,4 +36,5 @@ for (let page = 1; page <= 604; page++) {
   fontChecksums[page] = createHash('sha256').update(bytes).digest('hex');
 }
 await writeFile(new URL('offline-manifest.json', out), JSON.stringify({pages: 604, fontRevision: FONT_REVISION, fonts: fontChecksums}, null, 2) + '\n');
+await writeFile(new URL('update-runtime.json', out), JSON.stringify(await runtimeMetadata()));
 console.log('Android bundle ready: 604 Quran pages, 604 local fonts, native controls, no web analytics.');
