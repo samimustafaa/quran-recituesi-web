@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFile, access} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {createNativeStorage} from '../native/preferences.js';
-import {nativeBackAction} from '../dist/mobile-core.js';
+import {nativeBackAction, resumePage} from '../dist/mobile-core.js';
 import {validFont, FONT_REVISION} from './android-fonts.mjs';
 
 const out = new URL('../build/android-web/', import.meta.url);
@@ -27,6 +27,10 @@ for (const file of ['index.html', 'burimi.html']) {
   assert.ok(html.includes('<html lang="sq">'));
   assert.equal((html.match(/src="\/native.js"/g) || []).length, 1);
   assert.ok(!html.includes('src="/analytics.js"'));
+  assert.ok(html.includes('class="app-booting"'));
+  assert.equal((html.match(/id="app-loader"/g) || []).length, 1);
+  assert.ok(html.includes('role="status"'));
+  assert.ok(html.includes('id="app-loading-retry"'));
   for (const match of html.matchAll(/(?:src|href)="(\/(?!\/)[^"#]+)"/g)) await access(new URL('.' + match[1], out));
 }
 await assert.rejects(access(new URL('analytics.js', out)));
@@ -53,3 +57,23 @@ const unavailable = await createNativeStorage({get: async()=>{throw Error('Unava
 assert.equal(unavailable.get('lastPage',1),1); unavailable.set('night',true); await unavailable.flush();
 assert.equal(unavailable.get('night',false),true);
 console.log('Passed: 604 unchanged Quran pages and offline fonts, packaged navigation, native back behavior, saved progress and storage recovery.');
+
+// Cold starts restore real page 1 as well as later pages; first installs stay on the cover.
+for (const page of [1, 2, 187, 603, 604]) {
+  assert.equal(resumePage({native: true, hash: '', savedPage: page}), page);
+}
+for (const invalid of [null, undefined, -1, 0, 605, 1.5, '187', {}, NaN]) {
+  assert.equal(resumePage({native: true, hash: '', savedPage: invalid}), null);
+}
+assert.equal(resumePage({native: false, hash: '', savedPage: 187}), null);
+assert.equal(resumePage({native: true, hash: '#page=50', savedPage: 187}), 50);
+// Two independent phone stores must never overwrite each other's reading position.
+const secondSaved = new Map();
+const secondPrefs = {async get({key}) {return {value: secondSaved.get(key) ?? null};}, async set({key,value}) {secondSaved.set(key,value);}};
+const phone2 = await createNativeStorage(secondPrefs, {getItem:()=>null,setItem(){}});
+assert.equal(resumePage({native:true, hash:'', savedPage:phone2.get('lastPage',null)}),null);
+phone2.set('lastPage',42); await phone2.flush();
+const reopenedPhone2 = await createNativeStorage(secondPrefs, {getItem:()=>null,setItem(){}});
+assert.equal(resumePage({native:true, hash:'', savedPage:reopenedPhone2.get('lastPage',null)}),42);
+assert.equal(restored.get('lastPage',1),101);
+console.log('Passed: automatic cold-start resume, page 1 and 604, first install, invalid data, separate phone progress and loading-screen markup.');

@@ -2,7 +2,7 @@ import {TOTAL_PAGES, normalizePage, spreadFor, adjacentPage, groupPageLines, pag
 import {createOpeningPage} from './opening-page.js';
 import {surahMeaning, normalizeSearch} from './surah-names.js';
 import {storage, isNativeApp} from './platform.js';
-import {nativeBackAction} from './mobile-core.js';
+import {nativeBackAction, resumePage} from './mobile-core.js';
 
 const $ = selector => document.querySelector(selector);
 const media = matchMedia('(max-width: 720px)');
@@ -322,8 +322,9 @@ window.addEventListener('mushaf:back', () => {
 showResume(); applyTheme();
 loadMetadata().catch(() => {});
 getPage(1).catch(() => {}); getPage(2).catch(() => {}); getFont(1).catch(() => {}); getFont(2).catch(() => {});
-const initialPage = location.hash.match(/^#page=(\d+)$/); if(initialPage) openBook(normalizePage(initialPage[1]),false);
-if (!initialPage) bookScenePromise = import('./book-scene.js').then(async ({createBookScene}) => {
+const initialPage = resumePage({native: isNativeApp, hash: location.hash, savedPage: storage.get('lastPage', null)});
+export const readerReady = initialPage !== null ? openBook(initialPage, false) : Promise.resolve();
+if (initialPage === null) bookScenePromise = import('./book-scene.js').then(async ({createBookScene}) => {
   const pages = await preparePages(1,true);
   const firstPage = {...pages[1],chapters:state.chapters};
   bookScene = await createBookScene($('#book-canvas'),reducedMotion.matches,firstPage);

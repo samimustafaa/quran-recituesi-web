@@ -7,7 +7,8 @@ The Android app packages the existing Albanian Quran reader with Capacitor. All 
 - Original Arabic page data and calligraphy preserved from the website.
 - Albanian navigation, animated opening, smooth page turns and fast page/surah jumps.
 - Native Android Back navigation, system bar themes and safe area handling.
-- Reading position, bookmarks and night mode saved on the device.
+- Reading position, bookmarks and night mode saved independently on each device. Reopening the app automatically resumes the saved page, including after a cold start.
+- Albanian loading screen stays visible until preferences and the saved reading page are ready; respects night mode and reduced motion.
 - External HTTPS links open in a browser tab. No analytics is loaded inside the Android app.
 
 ## Build locally

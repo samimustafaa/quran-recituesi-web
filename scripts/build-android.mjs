@@ -16,6 +16,14 @@ await cp(new URL('native/native.css', root), new URL('native.css', out));
 for (const file of ['index.html', 'burimi.html']) {
   let html = await readFile(new URL(file, out), 'utf8');
   html = html.replace(/<script type="module" src="\/(?:app|analytics)\.js"><\/script>\s*/g, '');
+  html = html.replace('<body>', `<body class="app-booting">
+<section id="app-loader" class="app-loader" aria-label="Po hapet Mus'haf">
+  <img src="/assets/logo.png" width="62" height="126" alt="">
+  <h1>Mus'haf<span>.</span></h1>
+  <p id="app-loading-message" role="status">Po përgatitet hapësira e leximit…</p>
+  <span id="app-loading-spinner" class="app-loading-spinner" aria-hidden="true"></span>
+  <button id="app-loading-retry" type="button" hidden>Provo përsëri</button>
+</section>`);
   html = html.replace('</head>', '<link rel="stylesheet" href="/native.css">\n</head>');
   html = html.replace('</body>', '<script type="module" src="/native.js"></script>\n</body>');
   await writeFile(new URL(file, out), html);
